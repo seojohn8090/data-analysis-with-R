@@ -1,0 +1,107 @@
+---
+title: "Moments"
+output: html_document
+---
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(readr)
+library(fBasics)
+```
+
+### Using daily closing index data from 2005 to 2024, compute both simple and logarithmic returns. (a) Evaluate their distributional properties by calculating the mean, variance, skewness, and kurtosis. (b) Conduct statistical tests to assess the presence of asymmetry and fat tails in each return distribution. (c) Analyze whether there are statistically significant differences between the two types of returns.
+### 1. SSE Composite Index
+#### (a)
+```{r}
+data <- read_csv("Data/Shanghai Composite Historical Data.csv")
+
+data <- data %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) %>%
+  arrange(Date) %>%
+  mutate(
+    simple_return = Price / lag(Price) - 1,
+    log_return = log(Price / lag(Price))
+  ) %>%
+  filter(!is.na(simple_return))
+
+stats_simple <- basicStats(data$simple_return)
+stats_simple
+stats_log    <- basicStats(data$log_return)
+stats_log
+```
+#### (b)
+```{r}
+# Simple return
+# Skewness test
+Z_skew_simple_return <- sqrt(4859/6) * (-0.390656)
+Z_skew_simple_return
+p_skew_simple_return <- 2 * (1 - pnorm(abs(Z_skew_simple_return)))
+p_skew_simple_return
+# Kurtosis test
+Z_kurt_simple_return <- sqrt(4859/24) * (5.154275)
+Z_kurt_simple_return
+p_kurt_simple_return <- 2 * (1 - pnorm(abs(Z_kurt_simple_return)))
+p_kurt_simple_return
+# Log return
+# Skewness test
+Z_skew_log_return <- sqrt(4859/6) * (-0.548834)
+Z_skew_log_return
+p_skew_log_return <- 2 * (1 - pnorm(abs(Z_skew_log_return)))
+p_skew_log_return
+# Kurtosis test
+Z_kurt_log_return <- sqrt(4859/24) * (5.319291)
+Z_kurt_log_return
+p_kurt_log_return <- 2 * (1 - pnorm(abs(Z_kurt_log_return)))
+p_kurt_log_return
+```
+#### Both null hypotheses are rejected, indicating that the data exhibit statistically significant skewness and excess kurtosis. This implies that the distribution is not symmetric and deviates from normality, with either heavier or lighter tails than the normal distribution.
+
+#### (c)
+#### The mean of simple returns (0.000317) is slightly higher than that of log returns (0.000204). This is because log returns are continuously compounded and account for the effects of compounding more accurately, typically leading to slightly lower average values than simple returns.
+
+---
+### 2. KOSPI
+#### (a)
+```{r}
+data_1 <- read_csv("Data/KOSPI Historical Data.csv")
+
+data_1 <- data_1 %>%
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) %>%
+  arrange(Date) %>%
+  mutate(
+    simple_return = Price / lag(Price) - 1,
+    log_return = log(Price / lag(Price))
+  ) %>%
+  filter(!is.na(simple_return))
+
+stats_simple_1 <- basicStats(data_1$simple_return)
+stats_simple_1
+stats_log_1    <- basicStats(data_1$log_return)
+stats_log_1
+```
+#### (b)
+```{r}
+# Simple return
+# Skewness test
+Z_skew_simple_return_1 <- sqrt(4941/6) * (-0.336250)
+Z_skew_simple_return_1
+p_skew_simple_return_1 <- 2 * (1 - pnorm(abs(Z_skew_simple_return_1)))
+p_skew_simple_return_1
+# Kurtosis test
+Z_kurt_simple_return_1 <- sqrt(4941/24) * (8.663526)
+Z_kurt_simple_return_1
+p_kurt_simple_return_1 <- 2 * (1 - pnorm(abs(Z_kurt_simple_return_1)))
+p_kurt_simple_return_1
+# Log return
+# Skewness test
+Z_skew_log_return_1 <- sqrt(4941/6) * (-0.529591)
+Z_skew_log_return_1
+p_skew_log_return_1 <- 2 * (1 - pnorm(abs(Z_skew_log_return_1)))
+p_skew_log_return_1
+# Kurtosis test
+Z_kurt_log_return_1 <- sqrt(4941/24) * (8.851759)
+Z_kurt_log_return_1
+p_kurt_log_return_1 <- 2 * (1 - pnorm(abs(Z_kurt_log_return_1)))
+p_kurt_log_return_1
+```
