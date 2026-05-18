@@ -187,7 +187,7 @@ summary(df2)
 ##### phi1统计量为1.2534\<4.59(5%)，不能拒绝滞后项系数和截距项系数同时为零的假说。
 
 ``` r
-# 第3步：无截距、无趋势，固定滞后阶数
+# 第3步：无截距项、无趋势项，固定滞后阶数
 df3 <- ur.df(lnprice, lags = 15, type = "none", selectlags = "Fixed")
 summary(df3)
 ```
