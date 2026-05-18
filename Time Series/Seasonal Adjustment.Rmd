@@ -1,0 +1,134 @@
+---
+title: "Seasonal Adjustment"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+library(readxl)
+library(dplyr)
+library(readr)
+library(fBasics)
+library(stringr)
+library(urca)
+library(lubridate)
+library(seasonal)
+```
+
+### Using quarterly GDP data for China spanning 1992–2024, implement seasonal adjustment via deterministic seasonal filtering and the X‑11 procedure separately. Assess which method yields superior performance.
+
+```{r}
+# 数据预处理
+gdp <- read_excel("Data/GDP.xlsx", col_names = c("date", "gdp"))
+gdp <- gdp %>%
+  arrange(date)
+gdp_ts <- ts(gdp$gdp,
+             start = c(1992, 1),
+             frequency = 4)
+gdp_ts
+plot(gdp_ts,
+     main = "China Quarterly GDP (1992-2024)",
+     ylab = "GDP",
+     xlab = "Year")
+gdp_log <- log(gdp_ts)
+plot(gdp_log)
+```
+```{r}
+# 确定性季节调整（一）
+mth <- format(gdp$date, "%m")
+d1 <- d2 <- d3 <- d4 <- rep(0, length(gdp_log))
+d1[mth == "03"] <- 1
+d2[mth == "06"] <- 1
+d3[mth == "09"] <- 1
+d4[mth == "12"] <- 1
+# 以第四季度为基准组
+d14 <- d1 - d4
+d24 <- d2 - d4
+d34 <- d3 - d4
+out1 <- lm(gdp_log ~ d14 + d24 + d34)
+summary(out1)
+
+adj1 <- out1$coef[1] + residuals(out1)
+adj1 <- exp(adj1)
+adj1_ts <- ts(adj1,
+              start = c(1992, 1),
+              frequency = 4)
+plot(gdp_ts,
+     lty = 3,
+     main = "Deterministic Seasonal Adjustment",
+     ylab = "GDP",
+     xlab = "Year")
+
+lines(adj1_ts,
+      lty = 1)
+
+legend("topleft",
+       legend = c("Original GDP", "Adjusted GDP"),
+       lty = c(3, 1))
+```
+
+##### 首先采用固定季节效应的确定性季节模型进行调整。模型结果显示，季度虚拟变量 d14、d24、d34 的系数均不显著，整体F统计量对应的p值为0.7678，说明仅使用固定季度虚拟变量难以有效解释GDP序列中的季节波动。此外，该模型的调整后 R2 为负值，残差标准差达到1.173，说明模型拟合效果较差。
+
+```{r}
+# 确定性季节调整（二）：季节效应随时间变化模型
+t <- 1:length(gdp_log)
+d14t <- d14 * t
+d24t <- d24 * t
+d34t <- d34 * t
+out2 <- lm(gdp_log ~ t + d14 + d24 + d34 +
+                     d14t + d24t + d34t)
+summary(out2)
+
+adj2 <- out2$coef[1] +
+        out2$coef[2] * t +
+        residuals(out2)
+
+adj2 <- exp(adj2)
+
+adj1_sub <- ts(adj1[73:length(adj1)],
+               start = c(2010, 1),
+               frequency = 4)
+
+adj2_sub <- ts(adj2[73:length(adj2)],
+               start = c(2010, 1),
+               frequency = 4)
+
+plot(adj1_sub,
+     lty = 3,
+     main = "Comparison of Deterministic Seasonal Adjustments",
+     ylab = "GDP",
+     xlab = "Year")
+
+lines(adj2_sub,
+      lty = 1)
+
+legend("topleft",
+       legend = c("Fixed Seasonal Effect",
+                  "Time-varying Seasonal Effect"),
+       lty = c(3, 1))
+```
+
+##### 进一步地，在模型中加入时间趋势项以及季度虚拟变量与时间的交互项后，模型拟合效果显著提升。结果显示，时间趋势项t高度显著，说明中国GDP长期呈现明显增长趋势；同时，第一季度虚拟变量d14在1%水平下显著，表明第一季度GDP相对于第四季度存在明显差异。改进模型的R2提高到0.9828，调整后R2达到0.9819，残差标准差下降至0.1569，远低于固定季节模型，说明加入趋势项和时间变化季节效应后，模型能够更好地刻画GDP的动态变化。
+
+```{r}
+# X11
+x11_fit <- seas(gdp_ts,
+                x11 = "")
+summary(x11_fit)
+
+x11_adj <- final(x11_fit)
+
+plot(gdp_ts,
+     lty = 3,
+     main = "X11 Seasonal Adjustment",
+     ylab = "GDP",
+     xlab = "Year")
+
+lines(x11_adj,
+      lty = 1)
+
+legend("topleft",
+       legend = c("Original GDP", "X11 Adjusted GDP"),
+       lty = c(3, 1))
+```
+
+##### 最后，采用X11方法对季度GDP进行季节调整。X11方法自动选择了对数变换以及ARIMA(1,1,0)(0,1,0)模型，并自动识别出2020年第一季度和2021年第二季度的异常值，这与疫情冲击带来的特殊经济波动相一致。季节调整后的序列基本消除了原始GDP中的季度波动，趋势更加清晰。
